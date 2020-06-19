@@ -1,77 +1,85 @@
-
-
 <?php
-require 'banco.php';
-//Acompanha os erros de validação
 
-// Processar so quando tenha uma chamada post
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+require 'banco.php';
+
+$id = null;
+if (!empty($_GET['id'])) {
+    $id = $_REQUEST['id'];
+}
+
+if (null == $id) {
+    header("Location: index.php");
+}
+
+if (!empty($_POST)) {
+
     $nomeErro = null;
     $enderecoErro = null;
     $telefoneErro = null;
     $emailErro = null;
     $sexoErro = null;
 
-    if (!empty($_POST)) {
-        $validacao = True;
-        $novoUsuario = False;
-        if (!empty($_POST['nome'])) {
-            $nome = $_POST['nome'];
-        } else {
-            $nomeErro = 'Por favor digite o seu nome!';
-            $validacao = False;
-        }
+    $nome = $_POST['nome'];
+    $endereco = $_POST['endereco'];
+    $telefone = $_POST['telefone'];
+    $email = $_POST['email'];
+    $sexo = $_POST['sexo'];
 
-
-        if (!empty($_POST['endereco'])) {
-            $endereco = $_POST['endereco'];
-        } else {
-            $enderecoErro = 'Por favor digite o seu endereço!';
-            $validacao = False;
-        }
-
-
-        if (!empty($_POST['telefone'])) {
-            $telefone = $_POST['telefone'];
-        } else {
-            $telefoneErro = 'Por favor digite o número do telefone!';
-            $validacao = False;
-        }
-
-
-        if (!empty($_POST['email'])) {
-            $email = $_POST['email'];
-            if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-                $emailErro = 'Por favor digite um endereço de email válido!';
-                $validacao = False;
-            }
-        } else {
-            $emailErro = 'Por favor digite um endereço de email!';
-            $validacao = False;
-        }
-
-
-        if (!empty($_POST['sexo'])) {
-            $sexo = $_POST['sexo'];
-        } else {
-            $sexoErro = 'Por favor seleccione um campo!';
-            $validacao = False;
-        }
+    //Validação
+    $validacao = true;
+    if (empty($nome)) {
+        $nomeErro = 'Por favor digite o nome!';
+        $validacao = false;
     }
 
-//Inserindo no Banco:
+    if (empty($email)) {
+        $emailErro = 'Por favor digite o email!';
+        $validacao = false;
+    } else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $emailErro = 'Por favor digite um email válido!';
+        $validacao = false;
+    }
+
+    if (empty($endereco)) {
+        $enderecoErro = 'Por favor digite o endereço!';
+        $validacao = false;
+    }
+
+    if (empty($telefone)) {
+        $telefoneErro = 'Por favor digite o telefone!';
+        $validacao = false;
+    }
+
+    if (empty($sexo)) {
+        $sexoErro = 'Por favor preenche o campo!';
+        $validacao = false;
+    }
+
+    // update data
     if ($validacao) {
         $pdo = Banco::conectar();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "INSERT INTO pessoa (nome, endereco, telefone, email, sexo) VALUES(?,?,?,?,?)";
+        $sql = "UPDATE pessoa  set nome = ?, endereco = ?, telefone = ?, email = ?, sexo = ? WHERE id = ?";
         $q = $pdo->prepare($sql);
-        $q->execute(array($nome, $endereco, $telefone, $email, $sexo));
+        $q->execute(array($nome, $endereco, $telefone, $email, $sexo, $id));
         Banco::desconectar();
         header("Location: index.php");
     }
+} else {
+    $pdo = Banco::conectar();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sql = "SELECT * FROM pessoa where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute(array($id));
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $nome = $data['nome'];
+    $endereco = $data['endereco'];
+    $telefone = $data['telefone'];
+    $email = $data['email'];
+    $sexo = $data['sexo'];
+    Banco::desconectar();
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -80,23 +88,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="utf-8">
     <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
-    <title>Adicionar Contato</title>
+    <!-- using new bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+    <title>Atualizar Contato</title>
 </head>
 
 <body>
 <div class="container">
-    <div clas="span10 offset1">
+
+    <div class="span10 offset1">
         <div class="card">
             <div class="card-header">
-                <h3 class="well"> Adicionar Contato </h3>
+                <h3 class="well"> Atualizar Contato </h3>
             </div>
             <div class="card-body">
-                <form class="form-horizontal" action="create.php" method="post">
+                <form class="form-horizontal" action="update.php?id=<?php echo $id ?>" method="post">
 
-                    <div class="control-group  <?php echo !empty($nomeErro) ? 'error ' : ''; ?>">
+                    <div class="control-group <?php echo !empty($nomeErro) ? 'error' : ''; ?>">
                         <label class="control-label">Nome</label>
                         <div class="controls">
-                            <input size="50" class="form-control" name="nome" type="text" placeholder="Nome"
+                            <input name="nome" class="form-control" size="50" type="text" placeholder="Nome"
                                    value="<?php echo !empty($nome) ? $nome : ''; ?>">
                             <?php if (!empty($nomeErro)): ?>
                                 <span class="text-danger"><?php echo $nomeErro; ?></span>
@@ -104,21 +117,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div>
 
-                    <div class="control-group <?php echo !empty($enderecoErro) ? 'error ' : ''; ?>">
+                    <div class="control-group <?php echo !empty($enderecoErro) ? 'error' : ''; ?>">
                         <label class="control-label">Endereço</label>
                         <div class="controls">
-                            <input size="80" class="form-control" name="endereco" type="text" placeholder="Endereço"
+                            <input name="endereco" class="form-control" size="80" type="text" placeholder="Endereço"
                                    value="<?php echo !empty($endereco) ? $endereco : ''; ?>">
-                            <?php if (!empty($emailErro)): ?>
+                            <?php if (!empty($enderecoErro)): ?>
                                 <span class="text-danger"><?php echo $enderecoErro; ?></span>
                             <?php endif; ?>
                         </div>
                     </div>
 
-                    <div class="control-group <?php echo !empty($telefoneErro) ? 'error ' : ''; ?>">
+                    <div class="control-group <?php echo !empty($telefoneErro) ? 'error' : ''; ?>">
                         <label class="control-label">Telefone</label>
                         <div class="controls">
-                            <input size="35" class="form-control" name="telefone" type="text" placeholder="Telefone"
+                            <input name="telefone" class="form-control" size="30" type="text" placeholder="Telefone"
                                    value="<?php echo !empty($telefone) ? $telefone : ''; ?>">
                             <?php if (!empty($telefoneErro)): ?>
                                 <span class="text-danger"><?php echo $telefoneErro; ?></span>
@@ -126,10 +139,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div>
 
-                    <div class="control-group <?php !empty($emailErro) ? '$emailErro ' : ''; ?>">
+                    <div class="control-group <?php echo !empty($emailErro) ? 'error' : ''; ?>">
                         <label class="control-label">Email</label>
                         <div class="controls">
-                            <input size="40" class="form-control" name="email" type="text" placeholder="Email"
+                            <input name="email" class="form-control" size="40" type="text" placeholder="Email"
                                    value="<?php echo !empty($email) ? $email : ''; ?>">
                             <?php if (!empty($emailErro)): ?>
                                 <span class="text-danger"><?php echo $emailErro; ?></span>
@@ -137,36 +150,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div>
 
-                    <div class="control-group <?php !empty($sexoErro) ? 'echo($sexoErro)' : ''; ?>">
+                    <div class="control-group <?php echo !empty($sexoErro) ? 'error' : ''; ?>">
+                        <label class="control-label">Sexo</label>
                         <div class="controls">
-                            <label class="control-label">Sexo</label>
                             <div class="form-check">
                                 <p class="form-check-label">
                                     <input class="form-check-input" type="radio" name="sexo" id="sexo"
-                                           value="M" <?php isset($_POST["sexo"]) && $_POST["sexo"] == "M" ? "checked" : null; ?>/>
-                                    Masculino</p>
+                                           value="M" <?php echo ($sexo == "M") ? "checked" : null; ?>/> Masculino
                             </div>
                             <div class="form-check">
-                                <p class="form-check-label">
-                                    <input class="form-check-input" id="sexo" name="sexo" type="radio"
-                                           value="F" <?php isset($_POST["sexo"]) && $_POST["sexo"] == "F" ? "checked" : null; ?>/>
-                                    Feminino</p>
+                                <input class="form-check-input" type="radio" name="sexo" id="sexo"
+                                       value="F" <?php echo ($sexo == "F") ? "checked" : null; ?>/> Feminino
                             </div>
+                            </p>
                             <?php if (!empty($sexoErro)): ?>
-                                <span class="help-inline text-danger"><?php echo $sexoErro; ?></span>
+                                <span class="text-danger"><?php echo $sexoErro; ?></span>
                             <?php endif; ?>
                         </div>
                     </div>
+
+                    <br/>
                     <div class="form-actions">
-                        <br/>
-                        <button type="submit" class="btn btn-success">Adicionar</button>
+                        <button type="submit" class="btn btn-warning">Atualizar</button>
                         <a href="index.php" type="btn" class="btn btn-default">Voltar</a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-</div>
 </div>
 <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
         crossorigin="anonymous"></script>
@@ -178,4 +189,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </body>
 
 </html>
-
